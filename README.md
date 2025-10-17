@@ -69,13 +69,22 @@ python convert_hf_to_gguf.py /path/to/Qwen2.5-VL-7B-Instruct
 
 ### Node 1: Load Qwen2.5-VL GGUF Model
 
-Loads the GGUF model configuration. Automatically scans `models/text_encoders/` directory.
+Loads the GGUF model configuration. Automatically scans `models/text_encoders/` directory and any extra model paths configured in ComfyUI.
 
 **Parameters:**
-- `model`: Dropdown selection of available GGUF models (scanned from `models/text_encoders/`)
+- `model`: Dropdown selection of available GGUF models (scanned from `models/text_encoders/` and extra model paths)
 - `mmproj_path`: (Optional) Path to mmproj file. Leave empty for auto-detection
 - `n_ctx`: Context window size (default: 4096)
 - `n_gpu_layers`: GPU layers to offload (-1 = all, 0 = CPU only)
+
+**Extra Model Paths Support:**
+This node supports ComfyUI's `extra_model_paths.yaml` configuration. You can add additional directories to search for GGUF models by adding them to your ComfyUI configuration:
+
+```yaml
+# In ComfyUI/extra_model_paths.yaml
+text_encoders:
+    - /path/to/your/gguf/models
+```
 
 **Output:**
 - `model`: GGUF model configuration object
