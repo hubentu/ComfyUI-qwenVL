@@ -16,8 +16,22 @@ os.makedirs(vlm_gguf_directory, exist_ok=True)
 
 # Register text_encoders folder with ComfyUI's folder_paths system
 # This enables support for extra_model_paths.yaml configuration
-if not folder_paths.folder_names_and_paths.get("text_encoders"):
-    folder_paths.add_model_folder_path("text_encoders", text_encoders_directory)
+try:
+    # Check if text_encoders is already registered (e.g., from extra_model_paths.yaml)
+    existing_paths = folder_paths.folder_names_and_paths.get("text_encoders")
+    if existing_paths:
+        # Already registered, possibly from extra_model_paths.yaml
+        # Ensure our default directory is included
+        if text_encoders_directory not in existing_paths[0]:
+            folder_paths.add_model_folder_path("text_encoders", text_encoders_directory)
+            print(f"✅ Added default text_encoders path: {text_encoders_directory}")
+        print(f"📂 text_encoders paths configured: {existing_paths[0]}")
+    else:
+        # Not registered yet, register it
+        folder_paths.add_model_folder_path("text_encoders", text_encoders_directory)
+        print(f"✅ Registered text_encoders folder: {text_encoders_directory}")
+except Exception as e:
+    print(f"⚠️  Error registering text_encoders folder: {e}")
 
 
 def get_available_gguf_models():
@@ -29,13 +43,20 @@ def get_available_gguf_models():
     try:
         # Try to get all configured paths for text_encoders
         all_text_encoder_paths = folder_paths.get_folder_paths("text_encoders")
-    except:
+        print(f"🔍 Scanning for GGUF models in text_encoders paths:")
+        for path in all_text_encoder_paths:
+            print(f"   - {path} (exists: {os.path.exists(path)})")
+    except Exception as e:
         # Fallback if folder type not registered
+        print(f"⚠️  Could not get folder_paths for text_encoders: {e}")
         all_text_encoder_paths = [text_encoders_directory]
+        print(f"   Using fallback: {text_encoders_directory}")
     
     # Search in all text_encoders directories (including extra paths)
     for base_dir in all_text_encoder_paths:
         if os.path.exists(base_dir):
+            print(f"📁 Searching in: {base_dir}")
+            found_count = 0
             for root, dirs, files in os.walk(base_dir):
                 for file in files:
                     if file.endswith('.gguf') or file.endswith('.GGUF'):
@@ -53,9 +74,17 @@ def get_available_gguf_models():
                         if model_key not in model_paths_map:
                             model_paths_map[model_key] = full_path
                             models.append(model_key)
+                            found_count += 1
+                            print(f"   ✓ Found: {model_key}")
+            
+            if found_count == 0:
+                print(f"   (no GGUF files found)")
+        else:
+            print(f"⚠️  Path does not exist: {base_dir}")
     
     # Also search VLM_GGUF for backward compatibility
     if os.path.exists(vlm_gguf_directory):
+        print(f"📁 Searching legacy VLM_GGUF: {vlm_gguf_directory}")
         for root, dirs, files in os.walk(vlm_gguf_directory):
             for file in files:
                 if file.endswith('.gguf') or file.endswith('.GGUF'):
@@ -65,9 +94,13 @@ def get_available_gguf_models():
                     if model_key not in model_paths_map:
                         model_paths_map[model_key] = full_path
                         models.append(model_key)
+                        print(f"   ✓ Found: {model_key}")
     
     if not models:
+        print("❌ No GGUF models found in any configured path")
         models = ["No GGUF models found - place in models/text_encoders/"]
+    else:
+        print(f"✅ Total GGUF models found: {len(models)}")
     
     # Store the mapping globally for use in load_model
     get_available_gguf_models.model_paths = model_paths_map
